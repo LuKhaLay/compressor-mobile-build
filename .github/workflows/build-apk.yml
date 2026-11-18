@@ -1,0 +1,46 @@
+
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract Source ZIP
+        run: |
+          mkdir extracted
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          test -n "$ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d extracted
+          PROJECT_DIR=$(find extracted -mindepth 1 -maxdepth 1 -type d -name 'Compressor-*' | head -n 1)
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          chmod +x "$PROJECT_DIR/gradlew"
+
+      - name: Install Android SDK
+        run: sdkmanager --install "platforms;android-37"
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compressor-1.6.5-APK
+          path: extracted/Compressor-1.6.5/app/build/outputs/apk/debug/*.apk
